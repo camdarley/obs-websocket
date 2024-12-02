@@ -5507,6 +5507,36 @@ Gets a list of connected monitors and information about them.
 
 ---
 
+### OpenProjector
+
+Opens a projector for a specific type.
+
+Projector types:
+
+- `OBS_WEBSOCKET_PROJECTOR_TYPE_PREVIEW`
+- `OBS_WEBSOCKET_PROJECTOR_TYPE_STUDIO_PROGRAM`
+- `OBS_WEBSOCKET_PROJECTOR_TYPE_MULTIVIEW`
+- `OBS_WEBSOCKET_PROJECTOR_TYPE_SOURCE`
+- `OBS_WEBSOCKET_PROJECTOR_TYPE_SCENE`
+
+- Complexity Rating: `3/5`
+- Latest Supported RPC Version: `1`
+- Added in v5.0.0
+
+**Request Fields:**
+
+| Name | Type  | Description | Value Restrictions | ?Default Behavior |
+| ---- | :---: | ----------- | :----------------: | ----------------- |
+| projectorType | String | Type of projector to open | None | N/A |
+| ?sourceName | String | Name of the source to open a projector for | None | Unknown |
+| ?sourceUuid | String | UUID of the source to open a projector for | None | Unknown |
+| ?sceneName | String | Name of the scene to open a projector for | None | Unknown |
+| ?sceneUuid | String | UUID of the scene to open a projector for | None | Unknown |
+| ?monitorIndex | Number | Monitor index, use `GetMonitorList` to obtain index | None | -1: Opens projector in windowed mode |
+| ?projectorGeometry | String | Size/Position data for a windowed projector, in Qt Base64 encoded format. Mutually exclusive with `monitorIndex` | None | N/A |
+
+---
+
 ### OpenVideoMixProjector
 
 Opens a projector for a specific output video mix.

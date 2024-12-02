@@ -198,6 +198,98 @@ RequestResult RequestHandler::GetMonitorList(const Request &)
 }
 
 /**
+ * Opens a projector for a specific output.
+ *
+ * Mix types:
+ *
+ * - `OBS_WEBSOCKET_VIDEO_MIX_TYPE_PREVIEW`
+ * - `OBS_WEBSOCKET_VIDEO_MIX_TYPE_PROGRAM`
+ * - `OBS_WEBSOCKET_VIDEO_MIX_TYPE_MULTIVIEW`
+ * - `OBS_WEBSOCKET_VIDEO_MIX_TYPE_SOURCE`
+ * - `OBS_WEBSOCKET_VIDEO_MIX_TYPE_SCENE`
+ * 
+ *
+ *
+ * Note: This request serves to provide feature parity with 4.x. It is very likely to be changed/deprecated in a future release.
+ *
+ * @requestField projectorType | String | Type of projector to open
+ * @requestField ?sourceName | String | Name of the source to open a projector for
+ * @requestField ?sourceUuid | String | UUID of the source to open a projector for
+ * @requestField ?sceneName | String | Name of the scene to open a projector for
+ * @requestField ?sceneUuid | String | UUID of the scene to open a projector for
+ * @requestField ?monitorIndex | Number | Monitor index, use `GetMonitorList` to obtain index | None | -1: Opens projector in windowed mode
+ * @requestField ?projectorGeometry | String | Size/Position data for a windowed projector, in Qt Base64 encoded format. Mutually exclusive with `monitorIndex` | N/A
+ *
+ * @requestType OpenProjector
+ * @complexity 3
+ * @rpcVersion -1
+ * @initialVersion 5.0.0
+ * @category ui
+ * @api requests
+ */
+RequestResult RequestHandler::OpenProjector(const Request &request)
+{
+	RequestStatus::RequestStatus statusCode;
+	std::string comment;
+	if (!request.ValidateString("projectorType", statusCode, comment))
+		return RequestResult::Error(statusCode, comment);
+
+	std::string projectorType = request.RequestData["projectorType"];
+	const char *projectorTypeStr;
+	if (projectorType == "OBS_WEBSOCKET_PROJECTOR_TYPE_PREVIEW")
+		projectorTypeStr = "Preview";
+	else if (projectorType == "OBS_WEBSOCKET_PROJECTOR_TYPE_STUDIO_PROGRAM")
+		projectorTypeStr = "StudioProgram";
+	else if (projectorType == "OBS_WEBSOCKET_PROJECTOR_TYPE_MULTIVIEW")
+		projectorTypeStr = "Multiview";
+	else if (projectorType == "OBS_WEBSOCKET_PROJECTOR_TYPE_SOURCE")
+		projectorTypeStr = "Source";
+	else if (projectorType == "OBS_WEBSOCKET_PROJECTOR_TYPE_SCENE")
+		projectorTypeStr = "Scene";
+	else
+		return RequestResult::Error(RequestStatus::InvalidRequestField,
+					    "The field `projectorType` has an invalid enum value.");
+
+	OBSSourceAutoRelease source;
+	if (projectorTypeStr == "Source") {
+		source = request.ValidateSource("sourceName", "sourceUuid", statusCode, comment);
+		if (!source)
+			return RequestResult::Error(statusCode, comment);
+	}
+
+	OBSSourceAutoRelease scene;
+	if (projectorTypeStr == "Scene") {
+		scene = request.ValidateScene(statusCode, comment);
+		if (!scene)
+			return RequestResult::Error(statusCode, comment);
+	}
+
+	int monitorIndex = -1;
+	if (request.Contains("monitorIndex")) {
+		if (!request.ValidateOptionalNumber("monitorIndex", statusCode, comment, -1, 9))
+			return RequestResult::Error(statusCode, comment);
+		monitorIndex = request.RequestData["monitorIndex"];
+	}
+
+	std::string projectorGeometry;
+	if (request.Contains("projectorGeometry")) {
+		if (!request.ValidateOptionalString("projectorGeometry", statusCode, comment))
+			return RequestResult::Error(statusCode, comment);
+		if (monitorIndex != -1)
+			return RequestResult::Error(RequestStatus::TooManyRequestFields,
+						    "`monitorIndex` and `projectorGeometry` are mutually exclusive.");
+		projectorGeometry = request.RequestData["projectorGeometry"];
+	}
+
+	obs_frontend_open_projector(projectorTypeStr, monitorIndex, projectorGeometry.c_str(),
+				    source  ? obs_source_get_name(source)
+				    : scene ? obs_source_get_name(scene)
+					    : nullptr);
+
+	return RequestResult::Success();
+}
+
+/**
  * Opens a projector for a specific output video mix.
  *
  * Mix types:
